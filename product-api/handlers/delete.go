@@ -2,34 +2,40 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
-	"github.com/gorilla/mux"
 	"github.com/theluckiestsoul/microservicesgo/product-api/data"
 )
 
 // swagger:route DELETE /products/{id} products deleteProduct
-// Returns a list of products
+// Update a products details
+//
 // responses:
-// 	200: noContent
+//	201: noContentResponse
+//  404: errorResponse
+//  501: errorResponse
 
-// DeleteProducts deletes a product from database
-func (p *Products) DeleteProducts(rw http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(mux.Vars(r)["id"])
-	if err != nil {
-		http.Error(rw, "Invalid product id", http.StatusBadRequest)
-		return
-	}
-	p.l.Println("Handle DELETE Product")
-	err = data.DeleteProduct(id)
+// Delete handles DELETE requests and removes items from the database
+func (p *Products) Delete(rw http.ResponseWriter, r *http.Request) {
+	id := getProductID(r)
+
+	p.l.Println("[DEBUG] deleting record id", id)
+
+	err := data.DeleteProduct(id)
 	if err == data.ErrProductNotFound {
-		http.Error(rw, "Prodct not found", http.StatusNotFound)
+		p.l.Println("[ERROR] deleting record id does not exist")
+
+		rw.WriteHeader(http.StatusNotFound)
+		data.ToJSON(&GenericError{Message: err.Error()}, rw)
 		return
 	}
 
 	if err != nil {
-		http.Error(rw, "Prodct not found", http.StatusInternalServerError)
+		p.l.Println("[ERROR] deleting record", err)
+
+		rw.WriteHeader(http.StatusInternalServerError)
+		data.ToJSON(&GenericError{Message: err.Error()}, rw)
 		return
 	}
-	p.l.Printf("[DEBUG] Deleted product with id: %#v\n", id)
+
+	rw.WriteHeader(http.StatusNoContent)
 }
